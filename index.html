@@ -49,6 +49,40 @@
             margin-bottom: 20px;
         }
 
+        .version-info {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .version-badge {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .update-indicator {
+            background: #4CAF50;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 50%;
+            font-size: 0.7rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
         .search-container {
             display: flex;
             justify-content: center;
@@ -115,11 +149,31 @@
             transition: all 0.3s ease;
             border: 1px solid rgba(255, 255, 255, 0.2);
             cursor: pointer;
+            position: relative;
         }
 
         .news-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+
+        .news-card.new-article {
+            border: 2px solid #4CAF50;
+            background: rgba(76, 175, 80, 0.05);
+        }
+
+        .news-card.new-article::before {
+            content: "NEW";
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #4CAF50;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            z-index: 10;
         }
 
         .news-image {
@@ -223,6 +277,69 @@
             backdrop-filter: blur(10px);
         }
 
+        .update-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #4CAF50;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            transform: translateX(400px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            cursor: pointer;
+        }
+
+        .update-notification.show {
+            transform: translateX(0);
+        }
+
+        .update-notification .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            float: right;
+            margin-left: 10px;
+        }
+
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-size: 0.9rem;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .auto-refresh-toggle {
+            position: fixed;
+            bottom: 100px;
+            right: 30px;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 25px;
+            padding: 10px 15px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            z-index: 1000;
+        }
+
+        .auto-refresh-toggle.active {
+            background: #4CAF50;
+            color: white;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 15px;
@@ -245,6 +362,17 @@
             
             .category-btn {
                 white-space: nowrap;
+            }
+
+            .update-notification {
+                top: 10px;
+                right: 10px;
+                left: 10px;
+                transform: translateY(-100px);
+            }
+
+            .update-notification.show {
+                transform: translateY(0);
             }
         }
 
@@ -273,6 +401,10 @@
         .refresh-btn:active {
             transform: translateY(0);
         }
+
+        .refresh-btn.updating {
+            animation: spin 1s linear infinite;
+        }
     </style>
 </head>
 <body>
@@ -280,6 +412,12 @@
         <div class="header">
             <h1 class="logo">📰 NewsHub</h1>
             <p class="tagline">Your Gateway to Latest News & Updates</p>
+            
+            <div class="version-info">
+                <span>Version: <span class="version-badge" id="versionBadge">v2.1.0</span></span>
+                <span id="updateIndicator" class="update-indicator" style="display: none;">●</span>
+                <span id="lastUpdate">Last updated: <span id="lastUpdateTime">--</span></span>
+            </div>
             
             <div class="search-container">
                 <input type="text" class="search-box" placeholder="Search news articles..." id="searchInput">
@@ -311,7 +449,21 @@
         </div>
     </div>
 
+    <div id="updateNotification" class="update-notification">
+        <button class="close-btn" id="closeNotification">×</button>
+        <strong>🔄 Update Available!</strong>
+        <p>New content has been loaded. Click to refresh.</p>
+    </div>
+
+    <button class="auto-refresh-toggle" id="autoRefreshToggle">
+        🔄 Auto-Refresh: OFF
+    </button>
+
     <button class="refresh-btn" id="refreshBtn" title="Refresh News">🔄</button>
+
+    <div class="status-bar" id="statusBar">
+        Ready • Auto-refresh: Disabled • Last check: Never
+    </div>
 
     <script>
         class NewsApp {
@@ -320,10 +472,17 @@
                 this.filteredArticles = [];
                 this.currentCategory = 'all';
                 this.searchQuery = '';
+                this.version = '2.1.0';
+                this.autoRefreshEnabled = false;
+                this.autoRefreshInterval = null;
+                this.lastUpdateTime = null;
+                this.updateCheckInterval = null;
+                this.newArticlesCount = 0;
                 
                 this.initializeApp();
                 this.bindEvents();
                 this.loadSampleData();
+                this.startUpdateChecker();
             }
 
             initializeApp() {
@@ -333,6 +492,14 @@
                 this.loadingIndicator = document.getElementById('loadingIndicator');
                 this.noResults = document.getElementById('noResults');
                 this.refreshBtn = document.getElementById('refreshBtn');
+                this.updateNotification = document.getElementById('updateNotification');
+                this.autoRefreshToggle = document.getElementById('autoRefreshToggle');
+                this.statusBar = document.getElementById('statusBar');
+                this.versionBadge = document.getElementById('versionBadge');
+                this.updateIndicator = document.getElementById('updateIndicator');
+                this.lastUpdateTime = document.getElementById('lastUpdateTime');
+                
+                this.updateVersionDisplay();
             }
 
             bindEvents() {
@@ -345,7 +512,6 @@
                 // Category filtering
                 this.categoryFilters.addEventListener('click', (e) => {
                     if (e.target.classList.contains('category-btn')) {
-                        // Update active category
                         document.querySelector('.category-btn.active').classList.remove('active');
                         e.target.classList.add('active');
                         
@@ -359,6 +525,23 @@
                     this.refreshNews();
                 });
 
+                // Auto-refresh toggle
+                this.autoRefreshToggle.addEventListener('click', () => {
+                    this.toggleAutoRefresh();
+                });
+
+                // Update notification
+                this.updateNotification.addEventListener('click', (e) => {
+                    if (!e.target.classList.contains('close-btn')) {
+                        this.applyUpdates();
+                    }
+                });
+
+                document.getElementById('closeNotification').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.hideUpdateNotification();
+                });
+
                 // Article click handler
                 this.newsGrid.addEventListener('click', (e) => {
                     const card = e.target.closest('.news-card');
@@ -366,30 +549,124 @@
                         this.openArticle(card.dataset.url);
                     }
                 });
+
+                // Visibility change handling
+                document.addEventListener('visibilitychange', () => {
+                    if (!document.hidden && this.autoRefreshEnabled) {
+                        this.checkForUpdates();
+                    }
+                });
+            }
+
+            updateVersionDisplay() {
+                this.versionBadge.textContent = `v${this.version}`;
+                this.updateLastUpdateTime();
+            }
+
+            updateLastUpdateTime() {
+                const now = new Date();
+                this.lastUpdateTime.textContent = now.toLocaleTimeString();
+                this.updateStatusBar();
+            }
+
+            updateStatusBar() {
+                const status = this.autoRefreshEnabled ? 'Enabled' : 'Disabled';
+                const lastCheck = this.lastUpdateTime.textContent;
+                this.statusBar.textContent = `Ready • Auto-refresh: ${status} • Last check: ${lastCheck}`;
+            }
+
+            toggleAutoRefresh() {
+                this.autoRefreshEnabled = !this.autoRefreshEnabled;
+                
+                if (this.autoRefreshEnabled) {
+                    this.autoRefreshToggle.textContent = '🔄 Auto-Refresh: ON';
+                    this.autoRefreshToggle.classList.add('active');
+                    this.startAutoRefresh();
+                } else {
+                    this.autoRefreshToggle.textContent = '🔄 Auto-Refresh: OFF';
+                    this.autoRefreshToggle.classList.remove('active');
+                    this.stopAutoRefresh();
+                }
+                
+                this.updateStatusBar();
+            }
+
+            startAutoRefresh() {
+                if (this.autoRefreshInterval) {
+                    clearInterval(this.autoRefreshInterval);
+                }
+                
+                // Refresh every 30 seconds when auto-refresh is enabled
+                this.autoRefreshInterval = setInterval(() => {
+                    this.checkForUpdates();
+                }, 30000);
+            }
+
+            stopAutoRefresh() {
+                if (this.autoRefreshInterval) {
+                    clearInterval(this.autoRefreshInterval);
+                    this.autoRefreshInterval = null;
+                }
+            }
+
+            startUpdateChecker() {
+                // Check for updates every 60 seconds
+                this.updateCheckInterval = setInterval(() => {
+                    this.checkForUpdates();
+                }, 60000);
+            }
+
+            checkForUpdates() {
+                // Simulate checking for updates
+                const hasUpdates = Math.random() > 0.7; // 30% chance of updates
+                
+                if (hasUpdates) {
+                    this.newArticlesCount = Math.floor(Math.random() * 3) + 1;
+                    this.showUpdateNotification();
+                    this.updateIndicator.style.display = 'inline';
+                }
+                
+                this.updateLastUpdateTime();
+            }
+
+            showUpdateNotification() {
+                this.updateNotification.querySelector('p').textContent = 
+                    `${this.newArticlesCount} new article${this.newArticlesCount > 1 ? 's' : ''} available. Click to refresh.`;
+                this.updateNotification.classList.add('show');
+            }
+
+            hideUpdateNotification() {
+                this.updateNotification.classList.remove('show');
+            }
+
+            applyUpdates() {
+                this.hideUpdateNotification();
+                this.updateIndicator.style.display = 'none';
+                this.refreshNews(true);
             }
 
             loadSampleData() {
                 this.showLoading(true);
                 
-                // Simulate API call delay
                 setTimeout(() => {
                     this.articles = this.generateSampleArticles();
                     this.filterAndDisplayArticles();
                     this.showLoading(false);
+                    this.updateLastUpdateTime();
                 }, 1500);
             }
 
-            generateSampleArticles() {
-                const categories = ['technology', 'business', 'sports', 'entertainment', 'health', 'science'];
-                const sampleArticles = [
+            generateSampleArticles(includeNew = false) {
+                const baseArticles = [
                     {
-                        title: "Naveen",
+                        title: "Revolutionary AI Breakthrough Changes Everything",
                         summary: "Scientists have developed a new AI system that can understand and generate human-like responses with unprecedented accuracy.",
                         category: "technology",
                         source: "TechNews",
                         publishedAt: "2 hours ago",
                         imageUrl: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=200&fit=crop",
-                        url: "#"
+                        url: "#",
+                        isNew: false
                     },
                     {
                         title: "Global Markets Surge on Positive Economic Data",
@@ -398,7 +675,8 @@
                         source: "Financial Times",
                         publishedAt: "4 hours ago",
                         imageUrl: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=400&h=200&fit=crop",
-                        url: "#"
+                        url: "#",
+                        isNew: false
                     },
                     {
                         title: "Championship Finals Draw Record Viewership",
@@ -407,7 +685,8 @@
                         source: "Sports Central",
                         publishedAt: "6 hours ago",
                         imageUrl: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=400&h=200&fit=crop",
-                        url: "#"
+                        url: "#",
+                        isNew: false
                     },
                     {
                         title: "New Health Study Reveals Surprising Benefits",
@@ -416,7 +695,8 @@
                         source: "Health Today",
                         publishedAt: "8 hours ago",
                         imageUrl: "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=400&h=200&fit=crop",
-                        url: "#"
+                        url: "#",
+                        isNew: false
                     },
                     {
                         title: "Space Exploration Reaches New Milestone",
@@ -425,7 +705,8 @@
                         source: "Space News",
                         publishedAt: "10 hours ago",
                         imageUrl: "https://images.unsplash.com/photo-1446776677592-d0dacb1e00a8?w=400&h=200&fit=crop",
-                        url: "#"
+                        url: "#",
+                        isNew: false
                     },
                     {
                         title: "Entertainment Industry Embraces New Technology",
@@ -434,40 +715,50 @@
                         source: "Entertainment Weekly",
                         publishedAt: "12 hours ago",
                         imageUrl: "https://images.unsplash.com/photo-1489599433109-8fccaa2b8915?w=400&h=200&fit=crop",
-                        url: "#"
-                    },
-                    {
-                        title: "Climate Change Solutions Show Promise",
-                        summary: "New environmental technologies are showing significant potential in combating climate change effects.",
-                        category: "science",
-                        source: "Environmental Science",
-                        publishedAt: "14 hours ago",
-                        imageUrl: "https://images.unsplash.com/photo-1569163139394-de44cb3c0e55?w=400&h=200&fit=crop",
-                        url: "#"
-                    },
-                    {
-                        title: "Tech Giants Announce Major Partnership",
-                        summary: "Leading technology companies have formed an unprecedented alliance to advance innovation in artificial intelligence.",
-                        category: "technology",
-                        source: "Tech Insider",
-                        publishedAt: "16 hours ago",
-                        imageUrl: "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=200&fit=crop",
-                        url: "#"
-                    },
-                    // ADD MORE ARTICLES HERE - Example:
-                    {
-                        title: "Your Custom News Title",
-                        summary: "Your custom news summary goes here...",
-                        category: "technology", // or any category you want
-                        source: "Your Source",
-                        publishedAt: "1 hour ago",
-                        imageUrl: "https://your-image-url.com/image.jpg",
-                        videoUrl: "https://your-video-url.com/video.mp4", // NEW: Add video support
-                        url: "#"
+                        url: "#",
+                        isNew: false
                     }
                 ];
 
-                return sampleArticles;
+                const newArticles = [
+                    {
+                        title: "Breaking: Major Tech Acquisition Announced",
+                        summary: "In a surprise move, leading tech companies announce a multi-billion dollar acquisition that will reshape the industry landscape.",
+                        category: "technology",
+                        source: "Tech Breaking",
+                        publishedAt: "Just now",
+                        imageUrl: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=200&fit=crop",
+                        url: "#",
+                        isNew: true
+                    },
+                    {
+                        title: "Olympic Records Shattered in Latest Competition",
+                        summary: "Athletes continue to push the boundaries of human performance with multiple world records broken in today's events.",
+                        category: "sports",
+                        source: "Olympic News",
+                        publishedAt: "30 minutes ago",
+                        imageUrl: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=200&fit=crop",
+                        url: "#",
+                        isNew: true
+                    },
+                    {
+                        title: "Groundbreaking Medical Discovery Shows Promise",
+                        summary: "Researchers announce a potential breakthrough in treatment that could benefit millions of patients worldwide.",
+                        category: "health",
+                        source: "Medical Journal",
+                        publishedAt: "1 hour ago",
+                        imageUrl: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?w=400&h=200&fit=crop",
+                        url: "#",
+                        isNew: true
+                    }
+                ];
+
+                if (includeNew) {
+                    const selectedNewArticles = newArticles.slice(0, this.newArticlesCount);
+                    return [...selectedNewArticles, ...baseArticles];
+                }
+
+                return baseArticles;
             }
 
             filterAndDisplayArticles() {
@@ -494,7 +785,7 @@
                 this.noResults.style.display = 'none';
 
                 this.newsGrid.innerHTML = this.filteredArticles.map(article => `
-                    <div class="news-card" data-url="${article.url}">
+                    <div class="news-card ${article.isNew ? 'new-article' : ''}" data-url="${article.url}">
                         <div class="news-image">
                             ${article.videoUrl ? 
                                 `<video controls muted>
@@ -529,32 +820,133 @@
                         card.style.transform = 'translateY(0)';
                     }, index * 100);
                 });
+
+                // Remove new article indicators after 10 seconds
+                setTimeout(() => {
+                    this.articles.forEach(article => article.isNew = false);
+                    this.filterAndDisplayArticles();
+                }, 10000);
             }
 
             showLoading(show) {
                 this.loadingIndicator.style.display = show ? 'block' : 'none';
                 this.newsGrid.style.display = show ? 'none' : 'grid';
+                
+                if (show) {
+                    this.refreshBtn.classList.add('updating');
+                } else {
+                    this.refreshBtn.classList.remove('updating');
+                }
             }
 
-            refreshNews() {
+            refreshNews(includeNew = false) {
                 this.refreshBtn.style.transform = 'rotate(360deg)';
                 setTimeout(() => {
                     this.refreshBtn.style.transform = 'rotate(0deg)';
                 }, 500);
                 
-                this.loadSampleData();
+                this.showLoading(true);
+                
+                setTimeout(() => {
+                    this.articles = this.generateSampleArticles(includeNew);
+                    this.filterAndDisplayArticles();
+                    this.showLoading(false);
+                    this.updateLastUpdateTime();
+                    
+                    if (includeNew) {
+                        this.newArticlesCount = 0;
+                    }
+                }, 1500);
             }
 
             openArticle(url) {
                 // In a real app, this would open the full article
                 alert('Opening article... (In a real app, this would navigate to the full article)');
             }
+
+            // Simulate version updates
+            simulateVersionUpdate() {
+                const versions = ['2.1.1', '2.1.2', '2.2.0', '2.3.0'];
+                const currentIndex = versions.indexOf(this.version);
+                if (currentIndex < versions.length - 1) {
+                    this.version = versions[currentIndex + 1];
+                    this.updateVersionDisplay();
+                    this.showUpdateNotification();
+                }
+            }
+
+            // Method to add real-time updates (can be called externally)
+            addBreakingNews(article) {
+                article.isNew = true;
+                article.publishedAt = "Just now";
+                this.articles.unshift(article);
+                this.filterAndDisplayArticles();
+                this.showUpdateNotification();
+            }
+
+            // Method to update existing article
+            updateArticle(id, updates) {
+                const articleIndex = this.articles.findIndex(article => article.id === id);
+                if (articleIndex !== -1) {
+                    this.articles[articleIndex] = { ...this.articles[articleIndex], ...updates };
+                    this.filterAndDisplayArticles();
+                }
+            }
+
+            // Get app statistics
+            getStats() {
+                return {
+                    totalArticles: this.articles.length,
+                    filteredArticles: this.filteredArticles.length,
+                    currentCategory: this.currentCategory,
+                    searchQuery: this.searchQuery,
+                    version: this.version,
+                    autoRefreshEnabled: this.autoRefreshEnabled,
+                    lastUpdate: this.lastUpdateTime?.textContent || 'Never'
+                };
+            }
         }
 
         // Initialize the app when DOM is loaded
         document.addEventListener('DOMContentLoaded', () => {
-            new NewsApp();
+            window.newsApp = new NewsApp();
+            
+            // Simulate periodic version updates (every 2 minutes for demo)
+            setInterval(() => {
+                if (Math.random() > 0.8) { // 20% chance
+                    window.newsApp.simulateVersionUpdate();
+                }
+            }, 120000);
+            
+            // Add some demo breaking news after 45 seconds
+            setTimeout(() => {
+                const breakingNews = {
+                    id: 'breaking-' + Date.now(),
+                    title: "🚨 Breaking: Major Development in Global Affairs",
+                    summary: "This is a breaking news story that just came in. Our reporters are following this developing situation.",
+                    category: "breaking",
+                    source: "NewsHub Live",
+                    publishedAt: "Just now",
+                    imageUrl: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&h=200&fit=crop",
+                    url: "#",
+                    isNew: true
+                };
+                
+                if (window.newsApp.autoRefreshEnabled) {
+                    window.newsApp.addBreakingNews(breakingNews);
+                }
+            }, 45000);
         });
+
+        // Expose global functions for external API integration
+        window.NewsHub = {
+            addArticle: (article) => window.newsApp?.addBreakingNews(article),
+            updateArticle: (id, updates) => window.newsApp?.updateArticle(id, updates),
+            refresh: () => window.newsApp?.refreshNews(),
+            getStats: () => window.newsApp?.getStats(),
+            toggleAutoRefresh: () => window.newsApp?.toggleAutoRefresh(),
+            version: () => window.newsApp?.version
+        };
     </script>
 </body>
 </html>
