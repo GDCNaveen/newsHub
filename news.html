@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NewsHub - Stay Updated</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .logo {
+            text-align: center;
+            color: white;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .tagline {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+        }
+
+        .search-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .search-box {
+            width: 100%;
+            max-width: 500px;
+            padding: 15px 20px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .search-box:focus {
+            outline: none;
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+        }
+
+        .category-filters {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .category-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .category-btn:hover, .category-btn.active {
+            background: rgba(255, 255, 255, 0.9);
+            color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+        .news-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+
+        .news-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+        }
+
+        .news-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+
+        .news-image {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 3rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .news-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .news-image video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 0;
+        }
+
+        .news-content {
+            padding: 20px;
+        }
+
+        .news-category {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+
+        .news-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .news-summary {
+            color: #666;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+
+        .news-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #999;
+            font-size: 0.9rem;
+        }
+
+        .news-source {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .loading {
+            text-align: center;
+            color: white;
+            font-size: 1.2rem;
+            margin: 50px 0;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid white;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .no-results {
+            text-align: center;
+            color: white;
+            font-size: 1.2rem;
+            margin: 50px 0;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .logo {
+                font-size: 2rem;
+            }
+            
+            .news-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .category-filters {
+                justify-content: flex-start;
+                overflow-x: auto;
+                padding-bottom: 10px;
+            }
+            
+            .category-btn {
+                white-space: nowrap;
+            }
+        }
+
+        .refresh-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(0,0,0,0.3);
+        }
+
+        .refresh-btn:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="logo">📰 NewsHub</h1>
+            <p class="tagline">Your Gateway to Latest News & Updates</p>
+            
+            <div class="search-container">
+                <input type="text" class="search-box" placeholder="Search news articles..." id="searchInput">
+            </div>
+            
+            <div class="category-filters" id="categoryFilters">
+                <button class="category-btn active" data-category="all">All News</button>
+                <button class="category-btn" data-category="technology">Technology</button>
+                <button class="category-btn" data-category="business">Business</button>
+                <button class="category-btn" data-category="sports">Sports</button>
+                <button class="category-btn" data-category="entertainment">Entertainment</button>
+                <button class="category-btn" data-category="health">Health</button>
+                <button class="category-btn" data-category="science">Science</button>
+            </div>
+        </div>
+
+        <div id="loadingIndicator" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            Loading latest news...
+        </div>
+
+        <div class="news-grid" id="newsGrid">
+            <!-- News articles will be dynamically loaded here -->
+        </div>
+
+        <div id="noResults" class="no-results" style="display: none;">
+            <h3>🔍 No articles found</h3>
+            <p>Try adjusting your search terms or selecting a different category.</p>
+        </div>
+    </div>
+
+    <button class="refresh-btn" id="refreshBtn" title="Refresh News">🔄</button>
+
+    <script>
+        class NewsApp {
+            constructor() {
+                this.articles = [];
+                this.filteredArticles = [];
+                this.currentCategory = 'all';
+                this.searchQuery = '';
+                
+                this.initializeApp();
+                this.bindEvents();
+                this.loadSampleData();
+            }
+
+            initializeApp() {
+                this.newsGrid = document.getElementById('newsGrid');
+                this.searchInput = document.getElementById('searchInput');
+                this.categoryFilters = document.getElementById('categoryFilters');
+                this.loadingIndicator = document.getElementById('loadingIndicator');
+                this.noResults = document.getElementById('noResults');
+                this.refreshBtn = document.getElementById('refreshBtn');
+            }
+
+            bindEvents() {
+                // Search functionality
+                this.searchInput.addEventListener('input', (e) => {
+                    this.searchQuery = e.target.value.toLowerCase();
+                    this.filterAndDisplayArticles();
+                });
+
+                // Category filtering
+                this.categoryFilters.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('category-btn')) {
+                        // Update active category
+                        document.querySelector('.category-btn.active').classList.remove('active');
+                        e.target.classList.add('active');
+                        
+                        this.currentCategory = e.target.getAttribute('data-category');
+                        this.filterAndDisplayArticles();
+                    }
+                });
+
+                // Refresh button
+                this.refreshBtn.addEventListener('click', () => {
+                    this.refreshNews();
+                });
+
+                // Article click handler
+                this.newsGrid.addEventListener('click', (e) => {
+                    const card = e.target.closest('.news-card');
+                    if (card) {
+                        this.openArticle(card.dataset.url);
+                    }
+                });
+            }
+
+            loadSampleData() {
+                this.showLoading(true);
+                
+                // Simulate API call delay
+                setTimeout(() => {
+                    this.articles = this.generateSampleArticles();
+                    this.filterAndDisplayArticles();
+                    this.showLoading(false);
+                }, 1500);
+            }
+
+            generateSampleArticles() {
+                const categories = ['technology', 'business', 'sports', 'entertainment', 'health', 'science'];
+                const sampleArticles = [
+                    {
+                        title: "Revolutionary AI Breakthrough Changes Everything",
+                        summary: "Scientists have developed a new AI system that can understand and generate human-like responses with unprecedented accuracy.",
+                        category: "technology",
+                        source: "TechNews",
+                        publishedAt: "2 hours ago",
+                        imageUrl: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=200&fit=crop",
+                        url: "#"
+                    },
+                    {
+                        title: "Global Markets Surge on Positive Economic Data",
+                        summary: "Stock markets worldwide experienced significant gains following the release of encouraging economic indicators.",
+                        category: "business",
+                        source: "Financial Times",
+                        publishedAt: "4 hours ago",
+                        imageUrl: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=400&h=200&fit=crop",
+                        url: "#"
+                    },
+                    {
+                        title: "Championship Finals Draw Record Viewership",
+                        summary: "The latest championship match broke all previous viewing records, attracting millions of fans worldwide.",
+                        category: "sports",
+                        source: "Sports Central",
+                        publishedAt: "6 hours ago",
+                        imageUrl: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=400&h=200&fit=crop",
+                        url: "#"
+                    },
+                    {
+                        title: "New Health Study Reveals Surprising Benefits",
+                        summary: "Researchers have discovered unexpected health benefits from a common daily activity that millions already practice.",
+                        category: "health",
+                        source: "Health Today",
+                        publishedAt: "8 hours ago",
+                        imageUrl: "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=400&h=200&fit=crop",
+                        url: "#"
+                    },
+                    {
+                        title: "Space Exploration Reaches New Milestone",
+                        summary: "International space agencies collaborate on groundbreaking mission that could reshape our understanding of the universe.",
+                        category: "science",
+                        source: "Space News",
+                        publishedAt: "10 hours ago",
+                        imageUrl: "https://images.unsplash.com/photo-1446776677592-d0dacb1e00a8?w=400&h=200&fit=crop",
+                        url: "#"
+                    },
+                    {
+                        title: "Entertainment Industry Embraces New Technology",
+                        summary: "Major studios are investing heavily in innovative technologies to create immersive entertainment experiences.",
+                        category: "entertainment",
+                        source: "Entertainment Weekly",
+                        publishedAt: "12 hours ago",
+                        imageUrl: "https://images.unsplash.com/photo-1489599433109-8fccaa2b8915?w=400&h=200&fit=crop",
+                        url: "#"
+                    },
+                    {
+                        title: "Climate Change Solutions Show Promise",
+                        summary: "New environmental technologies are showing significant potential in combating climate change effects.",
+                        category: "science",
+                        source: "Environmental Science",
+                        publishedAt: "14 hours ago",
+                        imageUrl: "https://images.unsplash.com/photo-1569163139394-de44cb3c0e55?w=400&h=200&fit=crop",
+                        url: "#"
+                    },
+                    {
+                        title: "Tech Giants Announce Major Partnership",
+                        summary: "Leading technology companies have formed an unprecedented alliance to advance innovation in artificial intelligence.",
+                        category: "technology",
+                        source: "Tech Insider",
+                        publishedAt: "16 hours ago",
+                        imageUrl: "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=200&fit=crop",
+                        url: "#"
+                    },
+                    // ADD MORE ARTICLES HERE - Example:
+                    {
+                        title: "Your Custom News Title",
+                        summary: "Your custom news summary goes here...",
+                        category: "technology", // or any category you want
+                        source: "Your Source",
+                        publishedAt: "1 hour ago",
+                        imageUrl: "https://your-image-url.com/image.jpg",
+                        videoUrl: "https://your-video-url.com/video.mp4", // NEW: Add video support
+                        url: "#"
+                    }
+                ];
+
+                return sampleArticles;
+            }
+
+            filterAndDisplayArticles() {
+                this.filteredArticles = this.articles.filter(article => {
+                    const matchesCategory = this.currentCategory === 'all' || article.category === this.currentCategory;
+                    const matchesSearch = this.searchQuery === '' || 
+                        article.title.toLowerCase().includes(this.searchQuery) ||
+                        article.summary.toLowerCase().includes(this.searchQuery);
+                    
+                    return matchesCategory && matchesSearch;
+                });
+
+                this.displayArticles();
+            }
+
+            displayArticles() {
+                if (this.filteredArticles.length === 0) {
+                    this.newsGrid.style.display = 'none';
+                    this.noResults.style.display = 'block';
+                    return;
+                }
+
+                this.newsGrid.style.display = 'grid';
+                this.noResults.style.display = 'none';
+
+                this.newsGrid.innerHTML = this.filteredArticles.map(article => `
+                    <div class="news-card" data-url="${article.url}">
+                        <div class="news-image">
+                            ${article.videoUrl ? 
+                                `<video controls muted>
+                                    <source src="${article.videoUrl}" type="video/mp4">
+                                    <img src="${article.imageUrl}" alt="${article.title}" 
+                                         onerror="this.parentElement.innerHTML='📰'">
+                                </video>` :
+                                `<img src="${article.imageUrl}" alt="${article.title}" 
+                                     onerror="this.parentElement.innerHTML='📰'">`
+                            }
+                        </div>
+                        <div class="news-content">
+                            <span class="news-category">${article.category.toUpperCase()}</span>
+                            <h3 class="news-title">${article.title}</h3>
+                            <p class="news-summary">${article.summary}</p>
+                            <div class="news-meta">
+                                <span class="news-source">${article.source}</span>
+                                <span class="news-time">${article.publishedAt}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                // Add animation to cards
+                const cards = this.newsGrid.querySelectorAll('.news-card');
+                cards.forEach((card, index) => {
+                    card.style.opacity = '0';
+                    card.style.transform = 'translateY(20px)';
+                    setTimeout(() => {
+                        card.style.transition = 'all 0.5s ease';
+                        card.style.opacity = '1';
+                        card.style.transform = 'translateY(0)';
+                    }, index * 100);
+                });
+            }
+
+            showLoading(show) {
+                this.loadingIndicator.style.display = show ? 'block' : 'none';
+                this.newsGrid.style.display = show ? 'none' : 'grid';
+            }
+
+            refreshNews() {
+                this.refreshBtn.style.transform = 'rotate(360deg)';
+                setTimeout(() => {
+                    this.refreshBtn.style.transform = 'rotate(0deg)';
+                }, 500);
+                
+                this.loadSampleData();
+            }
+
+            openArticle(url) {
+                // In a real app, this would open the full article
+                alert('Opening article... (In a real app, this would navigate to the full article)');
+            }
+        }
+
+        // Initialize the app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new NewsApp();
+        });
+    </script>
+</body>
+</html>
